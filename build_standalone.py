@@ -70,12 +70,13 @@ bootstrap = '''<script>
   window.addEventListener('error',function(event){if(event.message)window.anatomiaReport(event.error || event.message);});
   window.addEventListener('unhandledrejection',function(event){window.anatomiaReport(event.reason);});
   document.getElementById('startup-recover').onclick=function(){
+    window.anatomiaRecovering=true;
     try {
       var old=localStorage.getItem('anatomia.v1');
       if(old)localStorage.setItem('anatomia.backup.'+Date.now(),old);
       localStorage.removeItem('anatomia.v1');
       location.reload();
-    } catch(error){window.anatomiaReport(error);}
+    } catch(error){window.anatomiaRecovering=false;window.anatomiaReport(error);}
   };
 })();
 </script>'''

@@ -14,7 +14,7 @@ let syncTimer,worldSaveTimer,enemyTimer,frameTime=0,route=[],routeInteraction=nu
 const held=new Set();
 const skillNames={guerrier:['Frappe d’épée','Brise-garde','Riposte protégée'],mage:['Éclair arcane','Météore','Barrière magique'],archer:['Flèche vive','Tir chargé','Tir d’esquive']};
 function toast(message){const node=document.querySelector('#toast');node.textContent=message;node.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>node.classList.remove('show'),5500);}
-function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch{toast('La sauvegarde locale est indisponible. Exporte ta partie depuis le grimoire.');}clearTimeout(syncTimer);syncTimer=setTimeout(()=>sync(state).catch(()=>toast('Sauvegarde locale conservée ; synchronisation à réessayer.')),400);}
+function save(){if(globalThis.anatomiaRecovering)return;try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch{toast('La sauvegarde locale est indisponible. Exporte ta partie depuis le grimoire.');}clearTimeout(syncTimer);syncTimer=setTimeout(()=>sync(state).catch(()=>toast('Sauvegarde locale conservée ; synchronisation à réessayer.')),400);}
 function touchWorld(){state.world.updatedAt=Date.now();state.updatedAt=Date.now();if(!worldSaveTimer)worldSaveTimer=setTimeout(()=>{worldSaveTimer=null;save();},600);}
 function stopWalking(){route=[];routeInteraction=null;held.clear();}
 function modal(html){stopWalking();lastFocus=document.activeElement;overlay.innerHTML=`<div class="veil"><section class="modal" role="dialog" aria-modal="true" aria-label="Anatomia" tabindex="-1">${html}</section></div>`;overlay.querySelector('.modal').focus();}
