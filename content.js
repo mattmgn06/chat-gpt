@@ -53,3 +53,45 @@ export const classes = {
   archer: { title:'Archer', icon:'➶', desc:'Une frappe précise. Toutes les deux bonnes réponses, +16 dégâts.', damage:24, defense:0, color:'#8dc5ad' },
 };
 export const companions = { loup: { title:'Loup spectral',icon:'♧',desc:'Un allié fidèle venu des brumes.' }, corbeau: { title:'Corbeau des runes',icon:'♜',desc:'Un éclaireur à l’œil attentif.' }, dragon: { title:'Dragon miniature',icon:'♨',desc:'Une petite flamme au grand courage.' } };
+
+// Les textes de découverte sont déclaratifs : ce ne sont pas des questions
+// affichées juste avant le test. Les variantes évaluent la même information.
+const fieldNotes = [
+  ['La cheville porte le nom d’articulation talo-crurale.','Nomme l’articulation qui correspond à la cheville.','Le terme « articulation de la cheville » désigne quelle articulation ?'],
+  ['L’articulation talo-crurale réunit le tibia, la fibula et le talus.','Énumère les trois os qui se rencontrent dans la cheville.','Le tibia et la fibula s’articulent avec un troisième os : nomme les trois os de cette union.'],
+  ['La talo-crurale est un ginglyme, aussi appelé articulation trochléenne.','Classe la talo-crurale selon son type articulaire.','Quel terme décrit le type articulaire de la cheville ?'],
+  ['Le tibia participe à la cheville par sa surface inférieure.','Sur quelle face du tibia se trouve la surface qui participe à la cheville ?','Identifie la surface tibiale engagée dans la talo-crurale.'],
+  ['Les malléoles médiale et latérale présentent chacune une surface articulaire dans la cheville.','Cite les deux malléoles dont les surfaces participent à la cheville.','Une seule ou les deux malléoles s’articulent dans la cheville ? Précise lesquelles.'],
+  ['La trochlée du talus s’encastre dans la mortaise formée par le tibia et la fibula.','Quelle structure du talus est reçue dans la mortaise ?','Nomme la partie du talus qui s’emboîte dans la mortaise tibio-fibulaire.'],
+  ['Les surfaces malléolaires médiale et latérale du talus complètent ses surfaces articulaires de cheville.','Quelles faces malléolaires du talus participent à la talo-crurale ?','Nomme les deux surfaces malléolaires du talus impliquées dans la cheville.'],
+  ['La mortaise tibio-fibulaire est solide et plus large en avant qu’en arrière.','Dans quelle direction la mortaise tibio-fibulaire s’élargit-elle ?','Compare l’avant et l’arrière de la mortaise : de quel côté est-elle la plus large ?'],
+  ['Toutes les surfaces articulaires décrites pour la talo-crurale sont recouvertes de cartilage.','Quel revêtement recouvre les surfaces articulaires de la cheville ?','Nomme le tissu qui encroûte ces surfaces articulaires.'],
+  ['La capsule s’attache près du pourtour des surfaces cartilagineuses, avec une exception en avant.','Décris l’insertion habituelle de la capsule, en dehors de l’exception antérieure.','À quel niveau des surfaces cartilagineuses s’attache habituellement la capsule ?'],
+  ['En avant, l’insertion de la capsule s’éloigne du talus.','De quel côté la capsule présente-t-elle une insertion plus éloignée du talus ?','Situe l’exception à l’insertion habituelle de la capsule sur le talus.'],
+  ['L’éloignement antérieur de la capsule par rapport au talus est de près d’un centimètre.','Donne l’ordre de grandeur de l’éloignement antérieur de la capsule.','Quelle distance sépare approximativement l’insertion antérieure de la capsule du talus ?'],
+  ['Deux membranes composent la capsule : une fibreuse et une synoviale.','Nomme les deux membranes qui forment la capsule.','Quels sont les deux constituants membraneux de la capsule articulaire ?'],
+  ['La membrane synoviale est située plus près de l’articulation que la membrane fibreuse.','Laquelle des membranes capsulaires est la plus proche de l’articulation ?','Entre la fibreuse et la synoviale, laquelle est la plus interne ?'],
+  ['La synoviale forme des culs-de-sac entre le tibia et la fibula.','Entre quels os retrouve-t-on les culs-de-sac synoviaux du cours ?','Nomme les deux os qui encadrent les culs-de-sac de la synoviale.'],
+  ['Les culs-de-sac entre tibia et fibula se trouvent aussi bien en avant qu’en arrière.','Indique les deux positions des culs-de-sac tibio-fibulaires.','Le cours décrit des culs-de-sac dans quelles directions autour de l’union tibio-fibulaire ?'],
+  ['Le ligament collatéral médial est également nommé ligament deltoïde.','Donne le synonyme du ligament collatéral médial.','Comment appelle-t-on autrement le ligament médial de la cheville ?'],
+  ['Résistant, le ligament deltoïde a une forme triangulaire.','Décris la forme géométrique du deltoïde.','Quelle silhouette caractérise le ligament collatéral médial ?'],
+  ['Le ligament deltoïde comporte deux couches, une superficielle et une profonde.','Combien de couches composent le deltoïde ?','Compte les couches du ligament collatéral médial.'],
+  ['Le sommet du deltoïde s’attache sur la face médiale de la malléole médiale.','Localise précisément l’insertion du sommet du deltoïde.','Sur quelle face de quelle malléole se fixe le sommet du ligament médial ?'],
+  ['Les ligaments tibio-naviculaire et tibio-calcanéen constituent la couche superficielle du deltoïde.','Nomme les deux éléments de la couche superficielle du deltoïde.','Quels ligaments faut-il regrouper dans le plan superficiel du ligament médial ?'],
+  ['Le ligament tibio-naviculaire va du tibia à la tubérosité naviculaire.','Nomme le relief distal où se fixe le tibio-naviculaire.','Quel relief du naviculaire reçoit le ligament venant du tibia ?'],
+  ['Le tibio-calcanéen se fixe au ligament calcanéo-naviculaire plantaire et au sustentaculum tali.','Cite les deux éléments de fixation distale du tibio-calcanéen.','Sur quel ligament et quel relief se fixe le tibio-calcanéen ?'],
+  ['Les ligaments talo-tibiaux antérieur et postérieur composent la couche profonde du deltoïde.','Nomme les deux ligaments du plan profond du deltoïde.','Quels faisceaux talo-tibiaux constituent la couche profonde du ligament médial ?'],
+  ['Le ligament talo-tibial antérieur se fixe sur la face médiale du col du talus.','Précise la face et la partie du talus recevant le talo-tibial antérieur.','Où se trouve la fixation talaire du talo-tibial antérieur ?'],
+  ['Le talo-tibial postérieur s’attache sur la face médiale du corps du talus et sur son tubercule médial.','Donne les deux fixations talaires du talo-tibial postérieur.','Quelles parties médiales du talus reçoivent le talo-tibial postérieur ?'],
+  ['Trois faisceaux constituent le ligament collatéral latéral.','Compte les faisceaux du ligament latéral de la cheville.','De combien de faisceaux se compose le collatéral latéral ?'],
+  ['Le collatéral latéral associe les talo-fibulaires antérieur et postérieur au calcanéo-fibulaire.','Énumère les trois ligaments du complexe collatéral latéral.','Quels faisceaux composent le ligament latéral de la cheville ?'],
+  ['Le ligament talo-fibulaire antérieur est court et large.','Donne les deux caractéristiques de forme du talo-fibulaire antérieur.','Comment caractériser la longueur et la largeur du talo-fibulaire antérieur ?'],
+  ['Le talo-fibulaire antérieur naît au bord antérieur de la malléole fibulaire.','Précise le point de départ fibulaire du talo-fibulaire antérieur.','Quel bord de quelle malléole donne naissance au talo-fibulaire antérieur ?'],
+  ['Le talo-fibulaire antérieur se dirige vers la face antérieure du col du talus.','Situe la terminaison talaire du talo-fibulaire antérieur.','Quelle face de quelle partie du talus reçoit le talo-fibulaire antérieur ?'],
+  ['Le ligament talo-fibulaire postérieur est décrit comme très résistant.','Parmi les faisceaux latéraux, lequel est qualifié de très résistant ?','Nomme le faisceau talo-fibulaire auquel le cours attribue une grande résistance.'],
+  ['Le talo-fibulaire postérieur relie la malléole latérale au tubercule latéral du talus.','Nomme les deux extrémités du talo-fibulaire postérieur.','Quels repères relie le talo-fibulaire postérieur ?'],
+  ['Le ligament calcanéo-fibulaire ressemble à une longue corde.','Quelle forme est attribuée au calcanéo-fibulaire ?','À quoi le cours compare-t-il l’aspect du ligament calcanéo-fibulaire ?'],
+  ['Le calcanéo-fibulaire part de la partie postérieure de la malléole fibulaire.','Situe l’origine malléolaire du calcanéo-fibulaire.','De quelle partie de la malléole fibulaire part le calcanéo-fibulaire ?'],
+  ['Le calcanéo-fibulaire se termine sur la face latérale du calcanéus.','Précise la terminaison calcanéenne du calcanéo-fibulaire.','Sur quelle face du calcanéus s’attache le ligament venant de la fibula ?'],
+];
+facts.forEach((f,i)=>{f.lesson=fieldNotes[i][0];f.questions=[fieldNotes[i][1],fieldNotes[i][2],f.question];});

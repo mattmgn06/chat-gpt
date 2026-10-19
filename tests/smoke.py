@@ -1,71 +1,127 @@
+"""Parcours navigateur de la forêt et des combats, sans service distant."""
+from pathlib import Path
+from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
+from functools import partial
+import threading,json
 from playwright.sync_api import sync_playwright
-import json
-BASE='http://127.0.0.1:5173'
-with sync_playwright() as p:
- browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
- page=browser.new_page(viewport={'width':1440,'height':1050},device_scale_factor=1)
- errors=[]
- page.on('pageerror',lambda e: errors.append(str(e)))
- page.goto(BASE)
- page.locator('#hero-name').fill('Aëlys')
- page.locator('#hero-class').select_option('mage')
- page.locator('input[value="dragon"]').check()
- page.get_by_role('button',name='Entrer dans l’aventure').click()
- page.wait_for_selector('.map-panel')
- assert page.locator('.map-node').count()==4
- page.screenshot(path='/workspace/chat-gpt/test-results/desktop.png',full_page=True)
- page.locator('[data-region="surfaces"]').click()
- old=page.locator('.walking-hero').get_attribute('style')
- page.keyboard.press('ArrowRight')
- assert old!=page.locator('.walking-hero').get_attribute('style')
- page.get_by_role('button',name='Entrer en mission').click()
- for i in range(4):
-  if page.locator('[data-action="start-fight"]').count():page.locator('[data-action="start-fight"]').click()
-  if i==0:
-   page.screenshot(path='/workspace/chat-gpt/test-results/combat.png',full_page=True)
-  answer=page.evaluate('''async()=>{const {facts}=await import('/content.js'); const question=document.querySelector('.question-card h2').textContent;return facts.find(f=>f.question===question).answer;}''')
-  page.get_by_role('button',name=answer,exact=False).last.click()
-  assert page.locator('.feedback.correct').count()==1
-  page.locator('[data-action="next"]').click()
- assert '4 / 4' in page.locator('.result').inner_text()
- assert page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).rewards")
- page.locator('[data-action="finish"]').click()
- page.reload()
- assert page.locator('#profile-form').count()==0
- page.locator('[data-tab="hero"]').first.click()
- assert 'Aëlys' in page.locator('h1').inner_text()
- assert '60 XP' in page.locator('.page-heading p').inner_text()
- page.locator('[data-class="archer"]').click()
- assert page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).profile.class")=='archer'
- page.locator('[data-tab="world"]').first.click()
- page.locator('[data-action="boss"]').click()
- assert page.locator('#answer').count()==1
- assert page.locator('.answers').count()==0
- page.locator('#answer').fill('Je ne sais pas')
- page.locator('#answer-form button').click()
- assert page.locator('.feedback.incorrect').count()==1
- page.locator('[data-action="abandon"]').click()
- page.locator('[data-action="confirm-abandon"]').click()
- page.locator('[data-action="login"]').click()
- assert 'à activer' in page.locator('.modal h1').inner_text()
- page.locator('[data-action="close"]').click()
- page.locator('[data-tab="journal"]').first.click()
- assert page.locator('.knowledge-card').count()==36
- page.locator('[data-filter="due"]').click()
- assert page.locator('.knowledge-card').count()==0
- print('Desktop: mission, déplacement, récompenses, rechargement, classes, réponse écrite, abandon, compte non configuré, filtres OK')
- assert not errors,errors
- mobile=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
- mp=mobile.new_page();mp.on('pageerror',lambda e:errors.append(str(e)));mp.goto(BASE)
- mp.locator('#hero-name').fill('Nox');mp.locator('button[type="submit"]').click()
- assert mp.evaluate('document.documentElement.scrollWidth<=window.innerWidth'),mp.evaluate('[document.documentElement.scrollWidth,window.innerWidth]')
- mp.screenshot(path='/workspace/chat-gpt/test-results/mobile.png',full_page=True)
- mp.locator('[data-region="medial"]').click();mp.locator('[data-move="up"]').click()
- mp.locator('[data-action="interact"]').click();mp.locator('[data-action="start-fight"]').click()
- mp.locator('[data-mode="written"]').click()
- mp.locator('#answer').fill('deltoïde');mp.locator('#answer-form button').click()
- assert mp.locator('.feedback.correct').count()==1
- assert mp.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
- print('Mobile 390px: création du héros, exploration tactile, réponse écrite, aucun débordement horizontal OK')
- assert not errors,errors
- browser.close()
+
+ROOT=Path(__file__).resolve().parents[1]
+RESULTS=ROOT/'test-results';RESULTS.mkdir(exist_ok=True)
+class Quiet(SimpleHTTPRequestHandler):
+    def log_message(self,*args):pass
+    def copyfile(self,source,outputfile):
+        try:super().copyfile(source,outputfile)
+        except (BrokenPipeError,ConnectionResetError):pass
+server=ThreadingHTTPServer(('127.0.0.1',0),partial(Quiet,directory=str(ROOT/'dist')))
+threading.Thread(target=server.serve_forever,daemon=True).start()
+BASE=f'http://127.0.0.1:{server.server_port}'
+
+def new_page(browser,**kwargs):
+    context=browser.new_context(**kwargs)
+    page=context.new_page();errors=[]
+    page.on('pageerror',lambda error:errors.append(str(error)))
+    page.route('**/*',lambda route:route.continue_() if route.request.url.startswith(BASE) else route.abort())
+    return context,page,errors
+
+def profile(page,name='Aëlys',kind='guerrier'):
+    page.goto(BASE,wait_until='domcontentloaded')
+    page.locator('#hero-name').fill(name);page.locator('#hero-class').select_option(kind)
+    page.locator('#profile-form button[type="submit"]').click()
+    page.wait_for_selector('#forest-viewport')
+
+def destination(page,name):
+    page.locator('[data-action="atlas"]').click()
+    page.locator(f'[data-travel="{name}"]').click()
+
+def answer(page,written=False):
+    prompt=page.locator('.question-card h2').inner_text()
+    value=page.evaluate('''async prompt=>{const {facts}=await import('./content.js?v=3');return facts.find(f=>f.questions.includes(prompt)).answer;}''',prompt)
+    if written:
+        if page.locator('[data-mode="written"]').count():page.locator('[data-mode="written"]').click()
+        page.locator('#answer').fill(value);page.locator('#answer-form button').click()
+    else:
+        page.locator('.answers button').filter(has_text=value).last.click()
+    return value
+
+try:
+ with sync_playwright() as p:
+    browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+    context,page,errors=new_page(browser,viewport={'width':1440,'height':1050})
+    profile(page)
+    assert page.locator('.world-castle').count()==5
+    start=page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).world.x")
+    page.keyboard.down('ArrowRight');page.wait_for_timeout(300);page.keyboard.up('ArrowRight');page.wait_for_timeout(700)
+    assert page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).world.x")>start
+    destination(page,'stele-1');page.wait_for_selector('.field-notes',timeout=10000)
+    notes=page.locator('.field-notes').inner_text()
+    assert 'Quel est' not in notes and 'Quels sont' not in notes
+    assert len(page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).world.readings"))==3
+    page.locator('[data-action="close"]').click()
+    page.screenshot(path=str(RESULTS/'foret-desktop.png'),full_page=True)
+    destination(page,'surfaces')
+    page.wait_for_selector('.skill-grid',timeout=15000)
+    assert page.locator('.lesson').count()==0
+    assert page.locator('#answer').count()==0
+    for turn in range(4):
+        page.locator('[data-ability="quick"]').click()
+        if turn==0:
+            page.screenshot(path=str(RESULTS/'foret-combat.png'),full_page=True)
+            assert page.locator('.question-card h2').inner_text() not in notes
+        answer(page)
+        if turn<3:
+            page.wait_for_selector('.enemy-report',timeout=5000)
+            assert 'dégâts' in page.locator('.enemy-report').inner_text()
+            if turn==0:
+                assert '93 / 100' in page.locator('.hero-combatant').inner_text()
+                page.screenshot(path=str(RESULTS/'foret-riposte.png'),full_page=True)
+        else:
+            page.wait_for_selector('.phase-victory')
+            hp=page.locator('.hero-combatant').inner_text()
+            page.wait_for_timeout(1800)
+            assert page.locator('.hero-combatant').inner_text()==hp
+        page.locator('[data-action="next"]').click()
+    assert 'Le gardien est vaincu' in page.locator('.result h1').inner_text()
+    assert '4 / 4' in page.locator('.result').inner_text()
+    saved=page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1'))")
+    assert len(saved['rewards'])==1
+    page.locator('[data-action="finish"]').click();page.wait_for_timeout(1000)
+    assert page.locator('#forest-viewport').count()==1 and page.locator('.skill-grid').count()==0
+    x=page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).world.x")
+    page.reload(wait_until='domcontentloaded');assert page.locator('#profile-form').count()==0
+    assert page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).world.x")==x
+    page.locator('[data-tab="hero"]').first.click();page.locator('[data-class="mage"]').click()
+    assert page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).profile.class")=='mage'
+    page.locator('[data-tab="journal"]').first.click();assert page.locator('.knowledge-card').count()==36
+    assert not errors,errors
+    print('Ordinateur : marche, découvertes sans question, entrée automatique, alternance des tours, victoire réelle, sauvegarde et classes OK',flush=True)
+    context.close()
+
+    context,page,errors=new_page(browser,viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
+    profile(page,'Nox','archer')
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+    control=page.locator('[data-move="right"]');box=control.bounding_box()
+    page.mouse.move(box['x']+15,box['y']+15);page.mouse.down();page.wait_for_timeout(400);page.mouse.up();page.wait_for_timeout(700)
+    assert page.evaluate("JSON.parse(localStorage.getItem('anatomia.v1')).world.x")>160
+    page.screenshot(path=str(RESULTS/'foret-mobile.png'),full_page=True)
+    destination(page,'surfaces');page.wait_for_selector('.skill-grid',timeout=15000)
+    page.locator('[data-ability="guard"]').click();answer(page,written=True)
+    page.wait_for_selector('.enemy-report',timeout=5000)
+    assert '96 / 100' in page.locator('.hero-combatant').inner_text()
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+    assert not errors,errors
+    print('Mobile 390px : commandes tactiles, déplacement vers château, réponse écrite et garde OK',flush=True)
+    context.close()
+
+    context,page,errors=new_page(browser,viewport={'width':1280,'height':900})
+    legacy={'version':1,'profile':{'name':'Ancienne partie','class':'mage','companion':'dragon'},'updatedAt':123,'knowledge':{'tc-1':{'stage':1,'attempts':2,'correct':1,'due':0,'updatedAt':123}},'rewards':{'old':{'xp':100,'gold':15,'win':True,'at':123}}}
+    page.add_init_script('localStorage.setItem("anatomia.v1",'+json.dumps(json.dumps(legacy))+');')
+    page.goto(BASE,wait_until='domcontentloaded')
+    assert page.locator('#profile-form').count()==0
+    assert page.locator('#forest-viewport').count()==1
+    assert 'Niv. 2' in page.locator('.resources').inner_text()
+    page.locator('[data-tab="hero"]').first.click();assert 'Ancienne partie' in page.locator('h1').inner_text()
+    assert not errors,errors
+    print('Ancienne sauvegarde : héros, niveau, or et connaissances conservés OK',flush=True)
+    browser.close()
+finally:
+ server.shutdown()

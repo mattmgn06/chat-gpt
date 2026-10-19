@@ -2,47 +2,52 @@
 
 # Anatomia — Les Terres oubliées
 
-Prototype d'aventure anatomique en français, responsive, sans dépendance de compilation.
+Aventure de révision anatomique en français, sur ordinateur et mobile. Version 0.2 : une forêt ouverte à parcourir, des découvertes pédagogiques sur le terrain et de véritables combats au tour par tour.
 
-## Jouer en développement
+## Lancer et vérifier
 
-Depuis `/workspace/chat-gpt`, lancer `npm start` (ou `python3 -m http.server 5173 --bind 0.0.0.0`). Servir les fichiers via HTTP ; les modules JavaScript ne fonctionnent pas en ouvrant directement index.html. `npm test` exécute les tests du moteur de révision.
+Depuis `/workspace/chat-gpt`, lancer `npm start` (serveur HTTP Python, port 5173). Aucun paquet npm à installer. `npm test` vérifie le moteur, les combats, les parcours et les sauvegardes.
 
-La première partie propose un héros personnalisable, trois classes interchangeables, trois compagnons au choix, une carte et une exploration au clavier et par boutons tactiles. Quatre missions courtes permettent de découvrir 36 notions de l'articulation talo-crurale ; un boss propose huit questions écrites. Les victoires débloquent deux bonus d'équipement ; l'or est collecté pour une future boutique. Pas de paiement.
+`python3 scripts/build_site.py` prépare `dist/`, puis `python3 tests/smoke.py` démarre un serveur de test temporaire et vérifie le site préparé dans Chromium : ordinateur, mobile, déplacement, lecture, entrée automatique dans un château, attaque et riposte, victoire, sauvegarde et migration d'une ancienne partie. Chromium et Python Playwright doivent être disponibles. Le test bloque les requêtes externes.
 
-`npm run export` produit aussi `/workspace/anatomia.html` : une démo autonome à télécharger puis ouvrir directement dans un navigateur sur ordinateur, sans serveur. Elle embarque le cours et les planches et utilise une sauvegarde locale distincte de la version hébergée. La synchronisation Google y est désactivée ; l'export/import de partie reste disponible. Sur téléphone, l'ouverture de fichiers HTML dépend du navigateur et du gestionnaire de fichiers : la version hébergée est préférable.
+`python3 tests/standalone.py` construit et teste l'export autonome. Les captures de tests sont conservées dans `test-results/` (ignoré par Git).
 
-La version autonome 2 ne fait aucune requête réseau au démarrage : ses polices de secours sont locales et le PDF n'est décodé qu'à son ouverture. Un écran statique explique les blocages si JavaScript n'est pas exécuté. Les erreurs de démarrage sont affichées avec une option pour repartir en conservant une copie de secours de l'ancienne sauvegarde. Les identifiants de récompenses fonctionnent même sans `crypto.randomUUID`.
+## Explorer et apprendre
 
-Pour vérifier cette version : `python build_standalone.py test-results/anatomia-v2.html`, puis, serveur de développement en marche, `python tests/standalone.py`. Le test vérifie démarrage, combat, persistance, absence de requête externe, API PDF/UUID indisponibles, JavaScript désactivé et récupération après sauvegarde invalide. `ANATOMIA_BASE_URL` permet de changer l'adresse du serveur de test. L'ouverture directe `file://` et Firefox ne sont pas validés dans l'environnement cloud : le navigateur disponible interdit le premier et le réseau bloque le téléchargement du second.
+La forêt de 2048 × 1440 pixels est continue. La caméra suit le héros. Déplacements : flèches ou ZQSD/WASD, boutons tactiles maintenus, ou clic/toucher sur le sol. Les trajets automatiques contournent les lacs. La carte des lieux permet aussi de choisir une destination sans téléporter le personnage.
 
-## Périmètre pédagogique
+Douze stèles et carnets présentent des extraits déclaratifs du cours, trois ou quatre notions à la fois. Approcher un lieu puis appuyer sur E ou « Observer », ou cliquer sur le lieu pour y marcher. L'apprentissage ne prend plus la forme de la future question affichée juste avant le combat. Après chaque lecture, les notions concernées sont exclues des rencontres pendant huit cases supplémentaires (256 pixels de marche). Les notions révisables déjà échues sont prioritaires ; les nouvelles questions sont formulées avec plusieurs variantes et leurs choix sont mélangés.
 
-Source : PDF fourni « 1A - UE 1.7 - HB - arthrologie cheville pied », pages 3 à 14, conservé dans `assets/cours-cheville-pied.pdf`. Chaque question indique sa page. Les planches 4, 7, 9, 10, 12, 13 et 14 sont extraites du document ; les illustrations de fantasy sont originales en SVG et ne servent pas de références anatomiques.
+Cinq châteaux déclenchent automatiquement leur rencontre lorsque le héros passe leur entrée. Trois créatures sont aussi présentes dans la forêt, avec un délai de deux minutes avant une nouvelle rencontre. Après un combat, le héros réapparaît à distance de l'entrée pour ne pas redéclencher le même combat en boucle.
 
-Ce prototype n'est pas une couverture exhaustive des neuf documents. Il évalue 36 notions textuelles de cheville. Les repères des figures, les articulations du pied et les huit autres PDF restent à intégrer. Les images sont consultables en apprentissage ; les exercices d'identification avec légendes masquées ne sont pas encore implémentés. Les réponses écrites sont comparées à des formulations et groupes de termes explicitement enregistrés, sans service d'IA : elles tolèrent accents, casse et tirets mais pas toutes les formulations possibles. Les corrections restent consultables dans le PDF. Une relecture pédagogique de la banque est recommandée avant utilisation pour une évaluation réelle.
+Lire ne fait pas artificiellement monter un niveau de maîtrise : seuls les rappels testés font progresser une notion. Chaque notion garde son historique : apprentissage, renforcement après dix minutes, difficile après un jour, examen après trois jours, puis rappel après sept jours. Une erreur fait redescendre d'une étape et rapproche le rappel. Répondre avant l'échéance ne fait pas monter la maîtrise. Une victoire ne valide pas automatiquement un examen.
 
-Chaque notion suit quatre étapes. Première réponse juste : renforcement et rappel après dix minutes. Réussite à cette échéance : difficile et rappel après un jour. Réussite de mémoire : examen et rappel après trois jours. Réussite à cette échéance : examen validé et rappel après sept jours. Une erreur fait redescendre d'une étape et programme un rappel deux minutes plus tard. Répondre avant l'échéance ne fait pas monter la maîtrise. Le boss est une simulation ; le titre « examen » ne signifie pas que les notions ont toutes atteint leur dernière étape.
+## Combats
 
-Victoire normale : trois bonnes réponses sur quatre ; victoire boss : sept sur huit, avec des PV restants. Le coup de grâce est déclenché au bilan si ce seuil est atteint. Les statistiques de classe et équipements modifient dégâts et protection. Les séances peuvent être quittées : les révisions sont sauvegardées à chaque réponse, les récompenses seulement au bilan. Pas de chronomètre imposé.
+Le joueur choisit une frappe rapide, une attaque puissante (2 points de concentration) ou une garde. Il répond ensuite à une question. Une bonne réponse déclenche son attaque ; une erreur la fait manquer. Les frappes rapides et défensives réussies restaurent un point de concentration, dans la limite de trois.
 
-## Sauvegarde et connexion Google
+Si le monstre survit, son tour démarre automatiquement : il attaque après une réponse juste comme après une erreur. La garde réduit la riposte de 65 %. La classe et l'équipement modifient dégâts et protection. Les animations et le journal distinguent les deux tours. La correction reste lisible après la riposte ; le joueur choisit quand commencer le tour suivant. Un monstre vaincu ne peut pas attaquer.
 
-La sauvegarde locale et l'export/import JSON fonctionnent immédiatement. Google et la synchronisation sont **préparés mais non activés par défaut**. Aucun faux bouton ne simule une connexion réussie.
+La victoire exige de réduire les PV du monstre à zéro, avec un héros encore debout. Fin maximale d'une rencontre normale après huit tours, d'un boss après douze tours. En apprentissage, le compagnon empêche le dernier coup de faire tomber le héros sous un PV. Dans les niveaux suivants, une défaite est possible. Les réponses sont sauvegardées dès leur validation ; les récompenses ne sont attribuées qu'au bilan, une seule fois.
 
-Pour les activer :
+Trois classes interchangeables hors combat et trois compagnons au choix. Deux bonus d'équipement se débloquent avec les victoires. L'or reste conservé pour une future boutique.
 
-1. Créer un projet Firebase et y enregistrer une application Web.
-2. Activer Authentication > Google, configurer les coordonnées et domaines autorisés (dont le domaine HTTPS qui hébergera le jeu).
-3. Créer Firestore, puis publier les règles de `firestore.rules`. Chaque compte n'accède qu'à son document `players/{uid}`. Ne pas utiliser le mode test ouvert.
-4. Remplacer `null` dans `firebase-config.js` par la configuration **publique Web** fournie par Firebase (`apiKey`, `authDomain`, `projectId`, `appId`, etc.). Ne jamais mettre une clé privée de compte de service ou un secret OAuth dans le navigateur.
-5. Héberger ces fichiers sur un domaine HTTPS. Autoriser les accès nécessaires à `www.gstatic.com`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com`, `firestore.googleapis.com`, `accounts.google.com` et au domaine Firebase configuré. Une politique CSP éventuelle doit permettre les imports de modules Firebase et l'authentification correspondante.
-6. Tester avec un véritable compte Google sur ordinateur et téléphone : créer une partie, terminer une mission, se connecter sur le second appareil et vérifier XP et notions. Tester aussi la déconnexion et un refus d'accès entre deux comptes distincts. Ces vérifications ne sont pas réalisables sans projet configuré.
+## Source et limites pédagogiques
 
-Le rapprochement conserve les récompenses par identifiants uniques et prend la révision la plus récente de chaque notion. La dernière modification de profil l'emporte. Éviter deux séances simultanées sur la même notion : les événements de révision ne sont pas encore fusionnés individuellement. Les connexions nécessitent Internet ; les modules Firebase ne sont chargés qu'à la demande. Les polices Google sont facultatives, avec des polices système de secours. Pas de service worker ni de promesse de fonctionnement hors ligne.
+36 notions textuelles de l'articulation talo-crurale, d'après le PDF fourni « 1A - UE 1.7 - HB - arthrologie cheville pied », pages 3 à 14. Le document et ses planches restent consultables ; chaque correction cite sa page. Les décors de fantasy ne sont pas des références anatomiques.
 
-Ne pas connecter plusieurs comptes différents sur un navigateur partagé sans séparer leurs profils de navigateur : la sauvegarde locale est unique à cet appareil. Il n'y a pas encore d'interface de suppression de compte.
+Les repères des figures ne sont pas encore tous évalués. La partie pied et les huit autres documents restent à intégrer. Les réponses écrites sont comparées à des formulations et groupes de termes enregistrés, sans IA distante : accents, casse et tirets sont tolérés, mais certaines reformulations peuvent ne pas être reconnues. Toujours consulter la correction et sa source en cas de doute.
 
-## Suite prévue
+## Sauvegarde et Google
 
-Validation de cette boucle de jeu, intégration des autres documents avec traçabilité page par page, exercices sur schémas, récit plus développé, tutoriel scénarisé des trois classes et boutique d'équipement. Les choix initiaux de classe permettent déjà d'essayer leurs différences en mission.
+Le format de sauvegarde `anatomia.v1` est conservé. Les anciennes parties gardent héros, or, équipement et maîtrise des notions ; elles reçoivent simplement une position de départ dans la forêt. Les nouvelles parties enregistrent aussi position, distance parcourue et lectures. Export/import JSON dans le grimoire.
+
+Google et la synchronisation restent préparés mais **non activés** : `firebase-config.js` contient `null`. Pour les activer : créer une application Web Firebase, activer Authentication > Google avec le domaine du site autorisé, créer Firestore et publier `firestore.rules`, puis saisir uniquement la configuration Web publique dans `firebase-config.js`. Ne jamais mettre une clé privée de compte de service ou un secret OAuth dans le navigateur.
+
+Tester ensuite un vrai compte sur deux appareils : progression, reconnexion et séparation entre comptes. La fusion conserve les récompenses uniques, les révisions les plus récentes et les découvertes du monde. Éviter deux séances simultanées sur la même notion : les événements de révision ne sont pas encore fusionnés individuellement.
+
+## Publication et export
+
+La publication publique de la démo, PDF inclus, a été autorisée par l'utilisateur. Le workflow `.github/workflows/pages.yml` déploie `dist/` à chaque mise à jour de `main` et peut aussi être lancé manuellement. GitHub Pages doit utiliser la source « GitHub Actions ». Voir `PUBLICATION.md`. La préparation ou l'envoi Git ne prouvent pas que le site public est déjà à jour : vérifier le déploiement et la page servie.
+
+`npm run export` produit `/workspace/anatomia.html`, un fichier autonome sans requête réseau au démarrage, sans connexion Google, avec cours et illustrations intégrés. Un écran de diagnostic reste visible si le navigateur n'exécute pas le jeu ; les erreurs sont affichées et une récupération conserve une copie de secours de la sauvegarde. Les API PDF et UUID ne sont pas nécessaires au lancement du jeu. L'ouverture directe `file://` et Firefox ne peuvent pas être validés dans cet environnement cloud (restrictions de navigation et téléchargement réseau du navigateur) ; les tests Chromium servent l'export par HTTP.

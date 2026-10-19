@@ -43,15 +43,15 @@ async function connect() {{throw Error('Version locale sans connexion cloud');}}
 app = module('app.js')
 app = app.replace('href="assets/cours-cheville-pied.pdf#page=', 'href="#" data-course-page="')
 app = app.replace("window.open('assets/cours-cheville-pied.pdf','_blank','noopener')", "openCourse(1)")
-app = app.replace('src="assets/cours-${regions.find(r=>r.id===f.region).diagram}.jpg"', 'src="${COURSE_IMAGES[regions.find(r=>r.id===f.region).diagram]}"')
-script = '\n'.join([module('content.js'), module('engine.js'), prelude, app])
+app = re.sub(r'src="assets/cours-\$\{([^}]+)\}\.jpg"', r'src="${COURSE_IMAGES[\1]}"', app)
+script = '\n'.join([module('content.js'), module('engine.js'), module('world.js'), prelude, app])
 if '</script' in script.lower():
     raise ValueError('Fin de script inattendue dans le code embarqué')
 html = (root / 'index.html').read_text()
 css = re.sub(r'@import\s+url\([^)]*\)\s*;', '', (root / 'style.css').read_text())
-html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + css + '</style>')
+html = re.sub(r'<link rel="stylesheet" href="style\.css(?:\?[^"]*)?">', lambda _: '<style>' + css + '</style>', html)
 fallback = '''<section id="anatomia-startup" style="max-width:650px;margin:45px auto;padding:28px;border:1px solid #cfb580;border-radius:8px;background:#172224;color:#eeeae0;font:16px/1.7 system-ui,sans-serif">
-<h1 style="font:36px Georgia,serif;margin:0 0 18px">Anatomia — version 2</h1>
+<h1 style="font:36px Georgia,serif;margin:0 0 18px">Anatomia — la forêt ouverte</h1>
 <p id="startup-message">Le jeu est en cours de démarrage. Si cet écran reste affiché, le jeu n’a pas pu démarrer dans ce mode d’ouverture.</p>
 <p>Télécharge entièrement le fichier, puis ouvre-le depuis le dossier Téléchargements avec un navigateur à jour. L’aperçu d’une messagerie ou d’un lecteur de documents peut empêcher son exécution.</p>
 <p id="startup-error" style="white-space:pre-wrap;color:#f0c69b;overflow-wrap:anywhere"></p>
@@ -81,6 +81,6 @@ bootstrap = '''<script>
 </script>'''
 html = html.replace('<div id="app"></div>', fallback + bootstrap + '<div id="app"></div>')
 wrapped = "try {\n" + script + "\ndocument.getElementById('anatomia-startup').hidden=true;\n} catch(error) { window.anatomiaReport(error); }"
-html = html.replace('<script type="module" src="app.js"></script>', '<script id="anatomia-pdf" type="application/octet-stream">' + pdf + '</script><script>' + wrapped + '</script>')
+html = re.sub(r'<script type="module" src="app\.js(?:\?[^"]*)?"></script>', lambda _: '<script id="anatomia-pdf" type="application/octet-stream">' + pdf + '</script><script>' + wrapped + '</script>', html)
 output.write_text(html)
 print(f'Démo locale produite : {output.name} ({output.stat().st_size:,} octets)')

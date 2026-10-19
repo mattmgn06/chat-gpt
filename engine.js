@@ -34,6 +34,11 @@ export function mergeStates(a, b) {
   for (const [id, entry] of Object.entries(b.knowledge || {})) {
     if (!result.knowledge[id] || entry.updatedAt > result.knowledge[id].updatedAt) result.knowledge[id] = entry;
   }
+  if(a.world||b.world) {
+    const x=a.world||{},y=b.world||{};
+    result.world={...(x.updatedAt>y.updatedAt?x:y),distance:Math.max(x.distance||0,y.distance||0),readings:{...x.readings},cooldowns:{...x.cooldowns,...y.cooldowns}};
+    for(const [id,entry] of Object.entries(y.readings||{}))if(!result.world.readings[id]||entry.seenAt>result.world.readings[id].seenAt)result.world.readings[id]=entry;
+  }
   return result;
 }
 export function review(previous, correct, now = Date.now()) {
@@ -60,4 +65,44 @@ export function totals(state) {
   const xp=entries.reduce((n,r)=>n+r.xp,0), gold=entries.reduce((n,r)=>n+r.gold,0);
   const wins=entries.filter(r=>r.win).length;
   return {xp,gold,wins,level:1+Math.floor(xp/100)};
+}
+
+export function recallReady(reading, distance) {
+  // Après une lecture, il faut parcourir huit cases avant de revoir la notion.
+  return !reading || distance-(reading.seenDistance||0)>=256;
+}
+export function encounterFacts(facts,state,{region,boss=false,errors=false,now=Date.now()}={}) {
+  let pool=facts.filter(f=>recallReady(state.world?.readings?.[f.id],state.world?.distance||0));
+  if(errors)pool=pool.filter(f=>state.knowledge[f.id]&&state.knowledge[f.id].correct<state.knowledge[f.id].attempts);
+  const regional=pool.filter(f=>!region||f.region===region);
+  if(regional.length)pool=regional;
+  return pool.sort((a,b)=>{
+    const score=f=>{const k=state.knowledge[f.id];return k?(k.due<=now?0:2):state.world?.readings?.[f.id]?1:3;};
+    return score(a)-score(b)||(state.knowledge[a.id]?.due||0)-(state.knowledge[b.id]?.due||0);
+  }).slice(0,boss?12:8);
+}
+export const abilities = {
+  quick:{cost:0,damage:0,block:0,desc:'Attaque fiable. Une bonne réponse rend 1 point de concentration.'},
+  power:{cost:2,damage:14,block:0,desc:'Attaque puissante. Coûte 2 points de concentration.'},
+  guard:{cost:0,damage:-10,block:.65,desc:'Attaque défensive. Réduit la prochaine frappe de 65 %.'},
+};
+export function chooseAbility(combat,id) {
+  const skill=abilities[id];
+  if(combat.phase!=='choose'||!skill||combat.energy<skill.cost)return combat;
+  return {...combat,ability:id,energy:combat.energy-skill.cost,phase:'question'};
+}
+export function playerAttack(combat,correct,character,wins=0) {
+  if(combat.phase!=='question')return combat;
+  const streak=correct?combat.streak+1:0;
+  const damage=correct?Math.max(1,character.damage+abilities[combat.ability].damage+(character.title==='Archer'&&streak%2===0?16:0)+(wins>=2?2:0)):0;
+  const enemy=Math.max(0,combat.enemy-damage);
+  return {...combat,enemy,streak,damage,energy:Math.min(3,combat.energy+(correct&&combat.ability!=='power'?1:0)),phase:enemy===0?'victory':'player-result'};
+}
+export function enemyAttack(combat,character,{learning=false,wins=0}={}) {
+  if(combat.phase!=='enemy-turn'||combat.enemy<=0)return combat;
+  const raw=(combat.boss?19:11)+[0,6,2][combat.index%3];
+  const blocked=abilities[combat.ability]?.block||0;
+  const incoming=Math.max(1,Math.round((raw-character.defense-(wins>=5?2:0))*(1-blocked)));
+  const hp=Math.max(learning?1:0,combat.hp-incoming);
+  return {...combat,hp,incoming:combat.hp-hp,protected:learning&&hp===1,phase:hp===0?'defeat':'resolved'};
 }

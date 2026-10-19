@@ -1,5 +1,5 @@
 import { firebaseConfig } from './firebase-config.js';
-import { mergeStates, freshState } from './engine.js';
+import { mergeStates, freshState } from './engine.js?v=3';
 export const cloudAvailable = Boolean(firebaseConfig?.apiKey && firebaseConfig?.projectId);
 let auth, db, sdk, store, unsubscribe;
 async function init() {

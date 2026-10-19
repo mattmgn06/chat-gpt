@@ -1,7 +1,9 @@
 name: Publier Anatomia sur GitHub Pages
 
-# Le lancement reste manuel : enregistrer les sources ne publie pas le cours.
+# La publication publique a été autorisée ; les mises à jour de main sont déployées.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
