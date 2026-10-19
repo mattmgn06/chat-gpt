@@ -2,19 +2,19 @@
 
 # Anatomia — Les Terres oubliées
 
-Aventure de révision anatomique en français, sur ordinateur et mobile. Version 0.2 : une forêt ouverte à parcourir, des découvertes pédagogiques sur le terrain et de véritables combats au tour par tour.
+Aventure de révision anatomique en français, sur ordinateur et mobile. Version 0.3 : première forêt en 3D stylisée, compagnon animé qui suit le héros, indices progressifs et pouvoir de reformulation.
 
 ## Lancer et vérifier
 
-Depuis `/workspace/chat-gpt`, lancer `npm start` (serveur HTTP Python, port 5173). Aucun paquet npm à installer. `npm test` vérifie le moteur, les combats, les parcours et les sauvegardes.
+Depuis `/workspace/chat-gpt`, lancer `npm start` (serveur HTTP Python, port 5173). Le site utilise les fichiers Three.js inclus dans `vendor/`, sans CDN. `npm ci --ignore-scripts` installe les versions verrouillées nécessaires pour reconstruire l’export autonome ; il n’est pas requis pour servir le site déjà préparé. `npm test` vérifie le moteur, les combats, les parcours et les sauvegardes.
 
-`python3 scripts/build_site.py` prépare `dist/`, puis `python3 tests/smoke.py` démarre un serveur de test temporaire et vérifie le site préparé dans Chromium : ordinateur, mobile, déplacement, lecture, entrée automatique dans un château, attaque et riposte, victoire, sauvegarde et migration d'une ancienne partie. Chromium et Python Playwright doivent être disponibles. Le test bloque les requêtes externes.
+`python3 scripts/build_site.py` prépare `dist/`, puis `python3 tests/smoke.py` démarre un serveur de test temporaire et vérifie le site préparé dans Chromium : ordinateur, mobile, déplacement, lecture, entrée automatique dans un château, attaque et riposte, victoire, sauvegarde et migration d'une ancienne partie. Chromium et Python Playwright doivent être disponibles. Le test active un rendu WebGL logiciel, vérifie le véritable canvas 3D, le suivi du compagnon, le joystick, les réponses aidées, les trois espèces et le repli sans WebGL. Les requêtes externes sont bloquées.
 
 `python3 tests/standalone.py` construit et teste l'export autonome. Les captures de tests sont conservées dans `test-results/` (ignoré par Git).
 
 ## Explorer et apprendre
 
-La forêt de 2048 × 1440 pixels est continue. La caméra suit le héros. Déplacements : flèches ou ZQSD/WASD, boutons tactiles maintenus, ou clic/toucher sur le sol. Les trajets automatiques contournent les lacs. La carte des lieux permet aussi de choisir une destination sans téléporter le personnage.
+Le terrain de 2048 × 1440 unités de sauvegarde est représenté en 3D, avec une caméra orthographique qui suit le héros. Déplacements : flèches ou ZQSD/WASD, joystick sur téléphone, ou clic/toucher sur le sol. Le clic 3D est projeté sur le sol par un rayon ; le déplacement et les collisions conservent le même référentiel que les anciennes sauvegardes. Si WebGL est indisponible, la forêt et le compagnon restent utilisables en 2D. Les trajets automatiques contournent les lacs. La carte des lieux permet aussi de choisir une destination sans téléporter le personnage.
 
 Douze stèles et carnets présentent des extraits déclaratifs du cours, trois ou quatre notions à la fois. Approcher un lieu puis appuyer sur E ou « Observer », ou cliquer sur le lieu pour y marcher. L'apprentissage ne prend plus la forme de la future question affichée juste avant le combat. Après chaque lecture, les notions concernées sont exclues des rencontres pendant huit cases supplémentaires (256 pixels de marche). Les notions révisables déjà échues sont prioritaires ; les nouvelles questions sont formulées avec plusieurs variantes et leurs choix sont mélangés.
 
@@ -30,7 +30,23 @@ Si le monstre survit, son tour démarre automatiquement : il attaque après une 
 
 La victoire exige de réduire les PV du monstre à zéro, avec un héros encore debout. Fin maximale d'une rencontre normale après huit tours, d'un boss après douze tours. En apprentissage, le compagnon empêche le dernier coup de faire tomber le héros sous un PV. Dans les niveaux suivants, une défaite est possible. Les réponses sont sauvegardées dès leur validation ; les récompenses ne sont attribuées qu'au bilan, une seule fois.
 
+Après une défaite ou une rencontre inachevée, le joueur peut réessayer, revoir ses erreurs ou explorer ailleurs. Le réglage « Adaptative » ajuste les dégâts selon les réponses sans aide ; « Détente » et « Défi » permettent un choix manuel. Ces réglages ne valident pas de maîtrise pédagogique.
+
 Trois classes interchangeables hors combat et trois compagnons au choix. Deux bonus d'équipement se débloquent avec les victoires. L'or reste conservé pour une future boutique.
+
+## Le compagnon
+
+Loup spectral, corbeau et dragon possèdent chacun leur modèle 3D, leurs animations et leur portrait. Le compagnon suit la trace du héros. Il reste visible en combat ; après chaque riposte, si le héros est encore debout, il lui rend automatiquement jusqu’à 3 PV. Il explique aussi les erreurs à partir de la phrase sourcée du cours, sans inventer de diagnostic anatomique.
+
+Pendant une question hors examen, le joueur peut demander jusqu’à deux indices, du plus général au plus précis. Éclaircissement reformule la question sans donner la réponse ; il peut être utilisé tous les trois tours. Les aides n’affichent pas la réponse complète et sont bloquées au niveau examen. Les réponses écrites en cours de saisie sont conservées lorsqu’une aide est demandée.
+
+Toute réponse aidée est enregistrée séparément comme entraînement : elle ne modifie ni le niveau, ni l’échéance, ni les compteurs de réussite sans aide de la notion. Elle rapporte 5 XP au lieu de 10 en cas de réussite, et permet néanmoins d’attaquer. Une réussite ultérieure sans aide est nécessaire pour progresser. Les anciennes sauvegardes sont compatibles avec ces champs supplémentaires.
+
+## Rendu et bibliothèques
+
+Three.js 0.180.0 est installé depuis le registre npm avec le verrou d’intégrité de `package-lock.json`. Les deux modules navigateur nécessaires et leur licence MIT sont conservés dans `vendor/` pour servir le jeu sans dépendance à un CDN. Les modèles et le décor sont construits localement en géométrie ; aucun modèle externe ni service 3D n’est appelé. L’export autonome est assemblé avec esbuild 0.25.10, puis contient lui aussi le moteur 3D intégré.
+
+Le monde 3D est une première zone de la cheville. Les écrans de combat restent en 2D animée avec le portrait du compagnon. Les quêtes narratives, le développement du village et les autres chapitres ne sont pas encore implémentés.
 
 ## Source et limites pédagogiques
 

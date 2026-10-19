@@ -41,8 +41,9 @@ export function mergeStates(a, b) {
   }
   return result;
 }
-export function review(previous, correct, now = Date.now()) {
+export function review(previous, correct, now = Date.now(), {assisted=false}={}) {
   const p = previous || {stage:0, attempts:0, correct:0, due:0, mastered:false};
+  if(assisted)return {...p,practiceAttempts:(p.practiceAttempts||0)+1,practiceCorrect:(p.practiceCorrect||0)+Number(correct),lastPracticeAt:now,updatedAt:now};
   const eligible = now >= p.due;
   const stage = correct ? Math.min(3, p.stage + (eligible ? 1 : 0)) : Math.max(0, p.stage - 1);
   return {...p, stage, attempts:p.attempts + 1, correct:p.correct + Number(correct),
@@ -98,9 +99,9 @@ export function playerAttack(combat,correct,character,wins=0) {
   const enemy=Math.max(0,combat.enemy-damage);
   return {...combat,enemy,streak,damage,energy:Math.min(3,combat.energy+(correct&&combat.ability!=='power'?1:0)),phase:enemy===0?'victory':'player-result'};
 }
-export function enemyAttack(combat,character,{learning=false,wins=0}={}) {
+export function enemyAttack(combat,character,{learning=false,wins=0,damageScale=1}={}) {
   if(combat.phase!=='enemy-turn'||combat.enemy<=0)return combat;
-  const raw=(combat.boss?19:11)+[0,6,2][combat.index%3];
+  const raw=((combat.boss?19:11)+[0,6,2][combat.index%3])*damageScale;
   const blocked=abilities[combat.ability]?.block||0;
   const incoming=Math.max(1,Math.round((raw-character.defense-(wins>=5?2:0))*(1-blocked)));
   const hp=Math.max(learning?1:0,combat.hp-incoming);

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import subprocess
 
 root = Path(__file__).resolve().parent
 output = Path(sys.argv[1]) if len(sys.argv) > 1 else root.parent / 'anatomia.html'
@@ -44,7 +45,14 @@ app = module('app.js')
 app = app.replace('href="assets/cours-cheville-pied.pdf#page=', 'href="#" data-course-page="')
 app = app.replace("window.open('assets/cours-cheville-pied.pdf','_blank','noopener')", "openCourse(1)")
 app = re.sub(r'src="assets/cours-\$\{([^}]+)\}\.jpg"', r'src="${COURSE_IMAGES[\1]}"', app)
-script = '\n'.join([module('content.js'), module('engine.js'), module('world.js'), prelude, app])
+script = '\n'.join(["import * as THREE from './vendor/three.module.min.js';",module('content.js'), module('engine.js'), module('world.js'),module('companion.js'),module('forest3d.js'), prelude, app])
+bundler=root/'node_modules/.bin/esbuild'
+if not bundler.exists():
+    raise SystemExit('Exécuter npm ci --ignore-scripts avant de produire un export autonome.')
+result=subprocess.run([str(bundler),'--bundle','--format=iife','--target=es2020','--minify','--legal-comments=inline','--log-level=error'],input=script,text=True,capture_output=True,cwd=root)
+if result.returncode:
+    raise SystemExit(result.stderr)
+script=result.stdout
 if '</script' in script.lower():
     raise ValueError('Fin de script inattendue dans le code embarqué')
 html = (root / 'index.html').read_text()

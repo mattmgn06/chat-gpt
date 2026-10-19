@@ -1,11 +1,17 @@
 {
   "name": "anatomia",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 5173 --bind 0.0.0.0",
     "test": "node --test tests/*.test.js",
     "export": "python3 build_standalone.py"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
   }
 }

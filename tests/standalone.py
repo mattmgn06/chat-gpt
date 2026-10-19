@@ -17,7 +17,7 @@ with TemporaryDirectory() as tmp:
  BASE=f'http://127.0.0.1:{server.server_port}'
  try:
   with sync_playwright() as p:
-   browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+   browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
    for restricted in [False,True]:
     context=browser.new_context();page=context.new_page();errors=[];external=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
