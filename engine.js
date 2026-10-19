@@ -1,0 +1,63 @@
+export const SAVE_KEY = 'anatomia.v1';
+// Les identifiants de récompenses ne sont pas des secrets. randomUUID n'est
+// pas disponible dans tous les contextes d'ouverture de fichiers locaux.
+export function rewardId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  if (typeof globalThis.crypto?.getRandomValues === 'function') return Array.from(globalThis.crypto.getRandomValues(new Uint32Array(4)),n=>n.toString(16).padStart(8,'0')).join('');
+  return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+}
+export const intervals = [10 * 60e3, 24 * 3600e3, 3 * 86400e3, 7 * 86400e3];
+export const normalize = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/œ/g,'oe').replace(/[^a-z0-9]+/g,' ').trim();
+// Comparaison conservatrice : jamais de validation par simple présence d'un mot
+// dans une phrase négative ou proposant des réponses contradictoires.
+export function checkAnswer(fact, text) {
+  const value = normalize(text);
+  if (!value || /\b(non|pas|aucun|sauf|ou)\b/.test(value)) return false;
+  if (value === normalize(fact.answer)) return true;
+  return fact.aliases.some(alias => Array.isArray(alias)
+    ? alias.every(term => (` ${value} `).includes(` ${normalize(term)} `))
+    : value === normalize(alias) || value === normalize(`le ${alias}`) || value === normalize(`la ${alias}`));
+}
+export function freshState() {
+  return { version:1, profile:null, knowledge:{}, rewards:{}, updatedAt:0 };
+}
+export function mergeStates(a, b) {
+  const result = {...freshState(), ...a};
+  if (!b || b.version !== 1) return result;
+  const aProfileTime=a.profileUpdatedAt ?? a.updatedAt ?? 0;
+  const bProfileTime=b.profileUpdatedAt ?? b.updatedAt ?? 0;
+  result.profile = (bProfileTime > aProfileTime ? b.profile : a.profile) || b.profile || a.profile;
+  result.profileUpdatedAt=Math.max(aProfileTime,bProfileTime);
+  result.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+  result.rewards = {...a.rewards, ...b.rewards};
+  result.knowledge = {...a.knowledge};
+  for (const [id, entry] of Object.entries(b.knowledge || {})) {
+    if (!result.knowledge[id] || entry.updatedAt > result.knowledge[id].updatedAt) result.knowledge[id] = entry;
+  }
+  return result;
+}
+export function review(previous, correct, now = Date.now()) {
+  const p = previous || {stage:0, attempts:0, correct:0, due:0, mastered:false};
+  const eligible = now >= p.due;
+  const stage = correct ? Math.min(3, p.stage + (eligible ? 1 : 0)) : Math.max(0, p.stage - 1);
+  return {...p, stage, attempts:p.attempts + 1, correct:p.correct + Number(correct),
+    mastered: correct && (p.mastered || (p.stage === 3 && eligible)),
+    due: correct ? (eligible ? now + intervals[p.stage] : p.due) : now + 120e3,
+    updatedAt:now};
+}
+export function selectFacts(facts, knowledge, {region, boss=false, errors=false, now=Date.now()} = {}) {
+  let pool = facts.filter(f => !region || f.region === region);
+  if (errors) pool = pool.filter(f => knowledge[f.id] && knowledge[f.id].correct < knowledge[f.id].attempts);
+  return [...pool].sort((a,b) => {
+    const x=knowledge[a.id], y=knowledge[b.id];
+    if (boss) return (x?.correct || 0) - (y?.correct || 0);
+    const score = p => !p ? 1 : p.due <= now ? 0 : 2;
+    return score(x)-score(y) || (x?.due || 0)-(y?.due || 0) || (x?.attempts || 0)-(y?.attempts || 0);
+  }).slice(0,boss ? 8 : 4);
+}
+export function totals(state) {
+  const entries=Object.values(state.rewards || {});
+  const xp=entries.reduce((n,r)=>n+r.xp,0), gold=entries.reduce((n,r)=>n+r.gold,0);
+  const wins=entries.filter(r=>r.win).length;
+  return {xp,gold,wins,level:1+Math.floor(xp/100)};
+}
